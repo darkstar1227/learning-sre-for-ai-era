@@ -28,11 +28,11 @@ Response
 
 所以 Day 0 不談 Reliability、不談 SLO，也不談 Observability。
 
-今天只有一個目標：
+今天先把一件事做好：
 
 > **把後續 30 天需要的最小開發環境準備好，而且確認它真的可以呼叫 Gemini。**
 
-完成後，你會擁有：
+完成後，環境裡會有：
 
 - Python 開發環境
 - `uv` 套件管理工具
@@ -105,7 +105,7 @@ MODEL_NAME=gemini-3.7-flash
 
 ## 為什麼這個系列先選 Gemini？
 
-這個系列第一階段會先使用 **Google Gemini API**，主要原因不是要比較哪一家 LLM 最強，而是希望把學習門檻降到最低。
+這個系列第一階段先使用 **Google Gemini API**，目的是降低學習門檻，不比較哪一家 LLM 最強。
 
 我們真正想學的是：
 
@@ -120,7 +120,7 @@ AI Reliability
 
 而不是第一天就先處理一筆 LLM API 帳單。
 
-因此目前選擇：
+這裡選擇：
 
 ```text
 Google AI Studio
@@ -136,7 +136,7 @@ Google Gen AI SDK
 
 對教學與個人 Lab 來說，最大的優點就是可以先用較低成本開始實驗。
 
-Day 1 的 Request 數量其實很少，我們主要只是：
+Day 1 的 Request 數量很少，我們只會：
 
 ```text
 Send Request
@@ -197,7 +197,7 @@ Trace
 
 ---
 
-### 3. Provider 不是這個系列的核心
+### 3. 這個系列不比較 Provider
 
 這裡特別要強調：
 
@@ -285,7 +285,7 @@ python -m venv
 
 不是因為 `pip` 不能用。
 
-而是我希望整個 Lab 的環境可以：
+我希望整個 Lab 的環境能做到：
 
 - 重現
 - Lock dependency
@@ -465,7 +465,7 @@ requires-python = ">=3.12"
 dependencies = []
 ```
 
-這個檔案就是之後整個 Python 專案 dependency 的核心。
+之後 Python 專案的 dependency 都由這個檔案管理。
 
 ---
 
@@ -600,7 +600,7 @@ Project ID
 
 ## 2026 年需要注意：Gemini API Key 正在改版
 
-如果你以前建立過 Gemini Key，這裡值得注意。
+如果你以前建立過 Gemini Key，請先確認它的類型。
 
 Google 正在把 Gemini API 從舊的 **Standard API Key** 遷移至新的 **Authorization Key**。
 
@@ -837,7 +837,7 @@ generateContent
 
 仍然支援，但已被視為 legacy。
 
-因此 Day 0 的純 Gemini Smoke Test，我們直接使用新的 Interactions API。
+Day 0 的 Gemini Smoke Test 直接使用新的 Interactions API。
 
 ---
 
@@ -889,7 +889,7 @@ Google 官方 Quickstart 現在也是以 `client.interactions.create()` 示範�
 .env
 ```
 
-因此 Day 0 先用 `pydantic-settings` 幫我們載入。
+Day 0 先用 `pydantic-settings` 載入設定。
 
 建立：
 
@@ -1169,7 +1169,7 @@ Production Workload Identity
 sre-for-ai-era-local
 ```
 
-建立後 LangSmith 只會完整顯示 API Key 一次，因此當下就要安全保存。
+建立後，LangSmith 只會完整顯示 API Key 一次。請當場安全保存。
 
 你會得到類似：
 
@@ -1365,7 +1365,7 @@ Gemini connection OK
 
 今天還沒正式講 SRE。
 
-但其實我們已經碰到第一個 Production Reliability 問題：
+不過，我們已經碰到第一個 Production Reliability 問題：
 
 # Secret Management
 
@@ -1414,7 +1414,7 @@ Internet 在這方面通常比你想像中勤勞。
 
 ---
 
-# ⑰ Day 0 我們真正學到了什麼？
+# ⑰ Day 0 學到了什麼？
 
 表面上今天只做了：
 
@@ -1424,7 +1424,7 @@ Get API Keys
 Run Gemini
 ```
 
-但其實已經建立幾個後面會一直出現的工程習慣：
+同時也建立了幾個後面會反覆用到的工程習慣：
 
 ```text
 Reproducible Environment

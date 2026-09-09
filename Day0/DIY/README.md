@@ -42,4 +42,5 @@ Gemini connection OK
 1. **文章原始 `uv init` 慣例會產生 `src/<package>/` layout**，但文章要的是 `app/` 這種扁平 layout。直接沿用 `uv init` 預設值不會得到文章裡的目錄結構，需要手動移除 `src/` 並調整 `pyproject.toml`。
 2. **`uv run python scripts/test_gemini.py` 預設會 `ModuleNotFoundError: No module named 'app'`**：Python 執行單一腳本時，`sys.path` 只會加入該腳本所在目錄（`scripts/`），不會自動加入 repo 根目錄，因此 `from app.config import get_settings` 找不到 `app`。
    - **修正**：把專案設定為可安裝套件（`pyproject.toml` 加上 `[build-system]` 用 `hatchling`，並在 `[tool.hatch.build.targets.wheel]` 指定 `packages = ["app"]`），讓 `uv sync` 時把 `app/` 安裝進 venv，`import app.config` 就能在任何目錄下work。文章沒有提到這個細節，跟著操作的讀者若照抄很可能會卡在這一步。
-3. 其餘步驟（`uv --version`、`uv python install 3.12`、`uv add ...`）皆與文章描述一致，沒有落差。
+3. 其餘步驟（`uv --version`、`uv add ...`）皆與文章描述一致，沒有落差。
+4. 全部 48 個套件（`google-genai`/`langsmith`/`fastapi`/`pydantic-settings` 等）在 Python 3.14 上都能正常 resolve、安裝，`scripts/test_gemini.py` 執行結果與預期一致（假 Key 卡在 `400 API_KEY_INVALID`）。`pyproject.toml` 的 `requires-python` 與 `.python-version` 皆為 `3.14`。
