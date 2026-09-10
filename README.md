@@ -23,7 +23,8 @@
 | [Day0](./Day0/Day0.md) | 從零建立開發環境：Python、uv、Gemini API Key 與 LangSmith |
 | [Day1](./Day1/Day1.md) | 用 LLM Trace 看見一次 AI Workflow 的完整生命週期 |
 | [Day2](./Day2/Day2.md) | 建立自己的 SRE Lab：從 FastAPI 到 Observability Stack |
-| Day3 | 撰寫中 |
+| [Day3](./Day3/Day3.md) | 故障注入實驗：Break / Observe / Explain |
+| [Day4](./Day4/Day4.md) | 什麼是 SRE？可靠性不是零故障 |
 
 每篇文章固定回答：
 
