@@ -1,4 +1,4 @@
-# Day 00 -- 從零建立開發環境：Python、uv、Gemini API Key 與 LangSmith
+# Day 00｜從零建立開發環境：Python、uv、Gemini API Key 與 LangSmith
 
 **Setting Up the Lab Before We Break Things**
 
@@ -18,19 +18,15 @@ Response
 
 然後用 LangSmith 把這條 request 打開來看。
 
-但在開始之前，我們得先處理所有技術教學最容易被一句話帶過的東西：
+技術教學常把這一步寫成：
 
 > 「請先自行準備開發環境與 API Key。」
-
-這句話通常代表：
 
 **恭喜，你的第一個 Bug 已經開始了。**
 
 所以 Day 0 不談 Reliability、不談 SLO，也不談 Observability。
 
-今天先把一件事做好：
-
-> **把後續 30 天需要的最小開發環境準備好，而且確認它真的可以呼叫 Gemini。**
+Day 0 的目標很簡單：準備好後續 30 天需要的開發環境，並確認它能呼叫 Gemini。
 
 完成後，環境裡會有：
 
@@ -43,13 +39,13 @@ Response
 - Google Gen AI SDK
 - 第一個 Gemini API Smoke Test
 
-Day 1 就可以直接開始 tracing。
+Day 1 就能開始 tracing。
 
 ---
 
 # ① 今天要準備什麼？
 
-整個環境先保持很簡單：
+先把環境縮到能完成 Day 0 與 Day 1 的範圍：
 
 ```text
 Local Machine
@@ -99,8 +95,6 @@ MODEL_NAME=gemini-3.7-flash
 
 先不要把 Key 貼進任何 Python 程式碼。
 
-我們等等會處理。
-
 ---
 
 ## 為什麼這個系列先選 Gemini？
@@ -120,8 +114,6 @@ AI Reliability
 
 而不是第一天就先處理一筆 LLM API 帳單。
 
-這裡選擇：
-
 ```text
 Google AI Studio
       ↓
@@ -130,11 +122,9 @@ Gemini API Key
 Google Gen AI SDK
 ```
 
-主要有幾個考量。
-
 ### 1. AI Studio 有免費使用額度
 
-對教學與個人 Lab 來說，最大的優點就是可以先用較低成本開始實驗。
+對教學與個人 Lab 來說，低成本足以支撐早期實驗。
 
 Day 1 的 Request 數量很少，我們只會：
 
@@ -160,7 +150,7 @@ Send Again
 
 ---
 
-### 2. 官方 Python SDK 很簡單
+### 2. 官方 Python SDK 的最小呼叫
 
 Google 提供：
 
@@ -168,7 +158,7 @@ Google 提供：
 google-genai
 ```
 
-所以最小的 LLM Call 可以非常直接：
+最小的 LLM Call 只需要以下幾行：
 
 ```python
 from google import genai
@@ -181,25 +171,11 @@ response = client.models.generate_content(
 )
 ```
 
-這對 Day 0 / Day 1 很重要。
-
-因為我們希望把注意力放在：
-
-```text
-Request
- ↓
-Workflow
- ↓
-Trace
-```
-
-而不是先花大量篇幅解釋 SDK abstraction。
+Day 0 與 Day 1 先聚焦 Request、Workflow 與 Trace，不展開 SDK abstraction。
 
 ---
 
 ### 3. 這個系列不比較 Provider
-
-這裡特別要強調：
 
 > **我們選 Gemini，不代表後面的 Reliability 架構會綁死 Gemini。**
 
@@ -241,9 +217,7 @@ External Dependency
 
 來處理。
 
-所以 Day 0 選 Gemini 的真正原因很單純：
-
-> **便宜、容易開始，而且足夠讓我們先把 Reliability 問題做出來。**
+Day 0 選 Gemini，是因為成本低、容易開始，足以讓我們先練習 Reliability。
 
 工具之後可以換。
 
@@ -392,13 +366,13 @@ python --version
 我們這個系列先使用：
 
 ```text
-Python 3.12
+Python 3.14
 ```
 
 安裝：
 
 ```bash
-uv python install 3.12
+uv python install 3.14
 ```
 
 確認：
@@ -435,7 +409,7 @@ cd sre-for-ai-era
 初始化：
 
 ```bash
-uv init --python 3.12
+uv init --python 3.14
 ```
 
 這時會得到類似：
@@ -461,7 +435,7 @@ pyproject.toml
 name = "sre-for-ai-era"
 version = "0.1.0"
 description = "Learning SRE for the AI Era"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = []
 ```
 
@@ -496,7 +470,7 @@ pyproject.toml
 uv.lock
 ```
 
-所以 Repository 會慢慢變成：
+完成這一步後，Repository 會包含：
 
 ```text
 sre-for-ai-era/
@@ -586,7 +560,7 @@ Create API key
 xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-**不要把真正的 Key 截圖貼在文章、Discord、Slack、GitHub Issue 或 README。**
+**不要把可用的 API Key 截圖貼在文章、Discord、Slack、GitHub Issue 或 README。**
 
 這不是：
 
@@ -594,7 +568,7 @@ xxxxxxxxxxxxxxxxxxxxxxxx
 Project ID
 ```
 
-這是真正可以呼叫 API 的 Credential。
+這組 Credential 可以直接呼叫 API。
 
 ---
 
@@ -604,13 +578,11 @@ Project ID
 
 Google 正在把 Gemini API 從舊的 **Standard API Key** 遷移至新的 **Authorization Key**。
 
-目前：
-
 > 在 Google AI Studio 新建立的 API Key，預設已經是新的 Auth Key。
 
 Google 官方也表示，**2026 年 9 月開始 Gemini API 將拒絕 Standard Key**。
 
-所以現在重新跟著系列建立環境的話：
+重新建立環境時，請直接：
 
 > **直接建立新的 AI Studio Key，不要拿幾年前的舊 Key 硬撐。**
 
@@ -618,7 +590,7 @@ Google 官方也表示，**2026 年 9 月開始 Gemini API 將拒絕 Standard Ke
 
 # ⑦ API Key 不要寫進 Python
 
-下面這種寫法：
+不要把 API Key 寫進 Python：
 
 ```python
 from google import genai
@@ -656,7 +628,7 @@ git push
 
 ## 使用 Environment Variable
 
-Google 官方建議可以設定：
+Google 官方建議設定：
 
 ```text
 GEMINI_API_KEY
@@ -758,15 +730,7 @@ git status
 
 **看不到 `.env`。**
 
-如果看到：
-
-```text
-.env
-```
-
-準備被 Git Commit：
-
-先不要 Commit。
+如果看到 `.env`，先不要 Commit。
 
 ---
 
@@ -787,9 +751,7 @@ git status
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
-這是很普通的習慣。
-
-但普通的習慣往往就是 Reliability Engineering 的開始。
+這樣可以讓其他人取得設定範本，又不會拿到你的 Credential。
 
 ---
 
@@ -811,7 +773,7 @@ Authentication
 Gemini API
 ```
 
-這條路徑可以工作。
+先確認這條路徑能完成一次 Gemini API 呼叫。
 
 建立：
 
@@ -821,13 +783,13 @@ scripts/test_gemini.py
 
 ---
 
-## 目前 Gemini API 的一個重要變化
+## 新專案改用 Interactions API
 
 截至 2026 年，Google 已經將：
 
 ### Interactions API
 
-作為新專案的預設 Gemini Interface。
+新專案預設使用 Gemini Interface。
 
 Google 官方說明，從 **2026 年 6 月開始**，Interactions API 已經成為推薦的新介面，而早期常見的：
 
@@ -856,8 +818,6 @@ interaction = client.interactions.create(
 
 print(interaction.outputs[-1].text)
 ```
-
-注意這裡：
 
 ```python
 genai.Client()
@@ -1038,9 +998,7 @@ True
 print(settings.gemini_api_key)
 ```
 
-Debug Secret 的最佳方式不是：
-
-> 先把 Secret 印到所有 Log。
+Debug Secret 時，不要把 Secret 印到 Log。
 
 ---
 
@@ -1060,7 +1018,7 @@ ask_workflow
 └── Gemini
 ```
 
-所以需要讓 Application 有權限把 Trace 傳給 LangSmith。
+因此 Application 需要權限，才能把 Trace 傳給 LangSmith。
 
 ---
 
@@ -1119,7 +1077,7 @@ Production service
 Automation
 ```
 
-官方也是這樣區分用途。
+這裡把 Personal Access Token 用於本機開發，把 Service Key 留給 Application、Production 與 Automation。
 
 ---
 
@@ -1198,27 +1156,15 @@ LANGSMITH_API_KEY=...
 LANGSMITH_TRACING=true
 ```
 
-而：
+設定 `LANGSMITH_PROJECT` 後，Trace 會進入指定 Project。
 
-```text
-LANGSMITH_PROJECT
-```
-
-讓我們可以把 Trace 放進指定 Project。
-
-之後才不會得到：
-
-```text
-default
-```
-
-裡面有 8,000 條不知道誰是誰的 Trace。
+否則最後可能只剩一個 default Project，裡面堆著 8,000 條不知道屬於誰的 Trace。
 
 ---
 
 # ⑬ 完成 `.env.example`
 
-我們真正 Commit 的檔案：
+提交到 Repository 的 `.env.example`：
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key
@@ -1230,7 +1176,7 @@ LANGSMITH_PROJECT=learning-sre-ai-era-day01
 MODEL_NAME=gemini-3.7-flash
 ```
 
-真正的 `.env`：
+實際使用的 `.env`：
 
 ```env
 GEMINI_API_KEY=你的真正_Key
@@ -1242,13 +1188,13 @@ LANGSMITH_PROJECT=learning-sre-ai-era-day01
 MODEL_NAME=gemini-3.7-flash
 ```
 
-兩者最大的差異：
+兩者的差異在於：
 
 ```text
 .env.example
 ```
 
-永遠不應該包含真正 Credential。
+`.env.example` 不應包含實際 Credential。
 
 ---
 
@@ -1272,7 +1218,7 @@ sre-for-ai-era/
 └── README.md
 ```
 
-我們還沒有：
+目前還沒有這些元件，這是正常的。
 
 ```text
 FastAPI Endpoint
@@ -1283,8 +1229,6 @@ PostgreSQL
 Redis
 OpenTelemetry
 ```
-
-都正常。
 
 今天是：
 
@@ -1313,7 +1257,7 @@ uv run python --version
 應該是：
 
 ```text
-Python 3.12.x
+Python 3.14.x
 ```
 
 確認 dependency：
@@ -1328,7 +1272,7 @@ uv sync
 uv run python scripts/test_gemini.py
 ```
 
-如果成功得到：
+如果輸出：
 
 ```text
 Gemini connection OK
@@ -1341,7 +1285,7 @@ Gemini connection OK
 # Day 0 Checklist
 
 - [ ] 安裝 `uv`
-- [ ] 安裝 / 管理 Python 3.12
+- [ ] 安裝 / 管理 Python 3.14
 - [ ] 建立 `sre-for-ai-era`
 - [ ] 建立 `pyproject.toml`
 - [ ] 安裝 `google-genai`
@@ -1361,7 +1305,7 @@ Gemini connection OK
 
 ---
 
-# ⑯ 一個很小，但很重要的 Security Lesson
+# ⑯ Security Lesson：先保護 API Key
 
 今天還沒正式講 SRE。
 
@@ -1400,9 +1344,7 @@ git rm .env
 
 因為 Credential 很可能已經進入 Git History。
 
-正確第一步通常是：
-
-> **Rotate / Revoke Credential。**
+第一步是 **Rotate / Revoke Credential。**
 
 Google 官方對洩漏 Key 的處理也是先建立 replacement、更新 Application，再停用或刪除 compromised key，並檢查 usage。
 
@@ -1464,7 +1406,7 @@ Service 根本連不到 Provider
 
 環境準備好了。
 
-下一篇我們會真正建立：
+下一篇會建立：
 
 ```text
 Client
@@ -1501,14 +1443,10 @@ ask_workflow
     └── Output
 ```
 
-我們會開始回答這個系列的第一個 Reliability 問題：
-
 > **當 API 成功，但 AI 回答錯了，我們到底應該觀察什麼？**
 
 ---
 
 > 這篇是 **Learning SRE for the AI Era** 系列的環境準備篇。
 >
-> 從 Day 1 開始，我們會從一條最小 LLM Trace 出發，再逐步建立 SRE Lab、SLI/SLO、Observability、Incident Response、Resilience，以及最後延伸到 LLM、RAG、Agent 與 GPU Infrastructure。
->
-> **Build → Trace → Break → Measure → Evaluate → Recover → Improve.**
+> 從 Day 1 開始，我們會從一條最小 LLM Trace 出發，逐步建立 SRE Lab、SLI/SLO、Observability、Incident Response 與 Resilience，再延伸到 LLM、RAG、Agent 和 GPU Infrastructure。
