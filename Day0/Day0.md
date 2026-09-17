@@ -1,5 +1,7 @@
 # Day 00｜從零建立開發環境：Python、uv、Gemini API Key 與 LangSmith
 
+> GitHub：[darkstar1227/learning-sre-for-ai-era](https://github.com/darkstar1227/learning-sre-for-ai-era)
+
 **Setting Up the Lab Before We Break Things**
 
 在 Day 1，我們會建立第一條 AI Workflow Trace：
@@ -166,7 +168,7 @@ from google import genai
 client = genai.Client()
 
 response = client.models.generate_content(
-    model="gemini-2.5-flash",
+    model="gemini-3.6-flash",
     contents="What is an SLO?",
 )
 ```
@@ -816,7 +818,7 @@ interaction = client.interactions.create(
     input="Reply with exactly: Gemini connection OK",
 )
 
-print(interaction.outputs[-1].text)
+print(interaction.output_text)
 ```
 
 ```python
@@ -896,7 +898,7 @@ interaction = client.interactions.create(
     input="Reply with exactly: Gemini connection OK",
 )
 
-print(interaction.outputs[-1].text)
+print(interaction.output_text)
 ```
 
 執行：

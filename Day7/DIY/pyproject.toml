@@ -1,0 +1,26 @@
+[project]
+name = "day7-grounded-qa"
+version = "0.1.0"
+description = "Day7 DIY - Grounded Q&A API that separates Technical Success from Semantic Success"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.141.1",
+    "google-genai>=2.22.0",
+    "pydantic-settings>=2.15.0",
+    "uvicorn[standard]>=0.52.4",
+]
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

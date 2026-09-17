@@ -67,6 +67,6 @@ async def ask_llm(
     )
 
     return {
-        "answer": interaction.outputs[-1].text or "",
+        "answer": interaction.output_text or "",
         "model": settings.model_name,
     }

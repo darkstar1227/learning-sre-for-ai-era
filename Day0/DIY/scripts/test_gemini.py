@@ -14,4 +14,4 @@ interaction = client.interactions.create(
     input="Reply with exactly: Gemini connection OK",
 )
 
-print(interaction.outputs[-1].text)
+print(interaction.output_text)

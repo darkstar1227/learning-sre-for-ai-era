@@ -1,5 +1,7 @@
 # Day 01--用 LLM Trace 看見一次 AI Workflow 的完整生命週期
 
+> GitHub：[darkstar1227/learning-sre-for-ai-era](https://github.com/darkstar1227/learning-sre-for-ai-era)
+
 **Using LLM Tracing to See Inside an AI Workflow**
 
 如果一個 API 回傳：
@@ -45,6 +47,8 @@ LLM 回答：
 恭喜。
 
 API 成功了，使用者任務卻失敗了。
+
+這不是虛構的情境。2024 年，加拿大民事裁決庭就判 Air Canada 敗訴，原因是官網 Chatbot 給了乘客錯誤的喪假優惠資訊；航空公司甚至辯稱 Chatbot 是「獨立法律實體」，要自己為自己的回答負責，被裁決庭認為是「remarkable」的說法。API 沒有壞，HTTP 也是 200，公司卻要真的賠錢。（[CBC News：Air Canada found liable for chatbot's bad advice](https://www.cbc.ca/news/canada/british-columbia/air-canada-chatbot-lawsuit-1.7116416)）
 
 ---
 
@@ -146,6 +150,8 @@ Request
 - Failure 發生在哪個 Dependency
 
 這些資訊讓 Failure Domain 更快縮小，Reliability Engineering 不必靠猜。
+
+這套拆解 Request 的方法不是憑空發明的。Google 在 2010 年發表的 [Dapper 論文](https://research.google/pubs/dapper-a-large-scale-distributed-systems-tracing-infrastructure/) 首次系統性定義了 Trace、Span 與 Parent/Child 的追蹤模型，後來 Twitter 的 Zipkin、Uber 的 Jaeger 都是延續同一套概念的開源實作。今天 LangSmith 用的 Trace/Run 結構，本質上是同一套邏輯往 AI Workflow 延伸。
 
 ---
 
@@ -527,21 +533,11 @@ Gemini Call 開始
 結束 Run
 ```
 
-因此：
+這是 `wrap_gemini()` 原本設計要做的事——概念上仍然是在：
 
-```python
-client.aio.interactions.create(...)
-```
+> 呼叫 Gemini，同時多了一份 Telemetry。
 
-功能上仍然是在：
-
-> 呼叫 Gemini。
-
-只是同時多了一份：
-
-```text
-Telemetry
-```
+但這份 Instrument 目前主要覆蓋的是 `models.generate_content()` 這條路徑。實測會發現，換成 Interactions API（`client.aio.interactions.create(...)`）呼叫時，這層 Telemetry 並沒有真的多出一筆獨立的 Gemini Run——細節留到 ⑨ 用真實 API Key 實測時再說。
 
 ---
 
@@ -583,27 +579,15 @@ async def ask_llm(question: str):
 
 > 整個 `ask_llm()` 是更上層的 Workflow。
 
-所以我們最後不是得到：
-
-```text
-ask_workflow
-build_prompt
-Gemini
-```
-
-三筆互不相關的紀錄。
-
-而是：
+所以 `ask_workflow` 跟 `build_prompt` 最後不是兩筆互不相關的紀錄，而是：
 
 ```text
 ask_workflow
 │
-├── build_prompt
-│
-└── Gemini
+└── build_prompt
 ```
 
-形成 Parent / Child 關係。
+形成 Parent / Child 關係（Gemini 呼叫本身要不要出現在這棵樹裡，取決於 `wrap_gemini()` 有沒有真的 Instrument 到當下用的這條 SDK 呼叫路徑——見 ⑨）。
 
 ---
 
@@ -702,49 +686,35 @@ Gemini latency = 1.7s
 
         ↓
 
-⑥ wrap_gemini Instrument SDK Call
-   建立 Gemini Run
-
-        ↓
-
-⑦ Google Gen AI SDK
+⑥ Google Gen AI SDK
    將 HTTPS Request 送到 Gemini API
 
         ↓
 
-⑧ Gemini 產生 Response
+⑦ Gemini 產生 Response
 
         ↓
 
-⑨ SDK 收到 Response
+⑧ SDK 收到 Response
 
         ↓
 
-⑩ LangSmith 記錄
-   - Input
-   - Output
-   - Model
-   - Latency
-   - Token Usage
-   - Error
+⑨ ask_workflow 結束
 
         ↓
 
-⑪ ask_workflow 結束
-
-        ↓
-
-⑫ FastAPI 回傳 JSON
+⑩ FastAPI 回傳 JSON
 ```
 
-最後 LangSmith UI 就可以將它重建成：
+最後 LangSmith UI 實際重建出來的是：
 
 ```text
 POST /ask
 └── ask_workflow
-    ├── build_prompt
-    └── Gemini
+    └── build_prompt
 ```
+
+拿真實 API Key 跑一次、去 LangSmith 後台核對 Run 後發現：目前（`langsmith>=0.12.2`，`wrap_gemini()` 仍是 Beta）用 Interactions API（`client.aio.interactions.create()`）呼叫時，`wrap_gemini()` **沒有**額外生出一筆獨立的 Gemini Run，Trace 樹裡只看得到手動 `@traceable` 標記的 `ask_workflow` 跟 `build_prompt` 兩層，Gemini 呼叫本身的 Token Usage / Latency 也沒有被單獨記錄下來。`wrap_gemini()` 目前 instrument 的主要是 `models.generate_content()` 這條舊路徑，還沒跟上 Interactions API。想拿到 Gemini Call 這層的 Telemetry，現階段得自己在 `ask_llm()` 裡手動記錄，或等 SDK 更新。
 
 ---
 
@@ -828,7 +798,7 @@ LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=your_langsmith_api_key
 LANGSMITH_PROJECT=learning-sre-ai-era-day01
 
-MODEL_NAME=gemini-2.5-flash
+MODEL_NAME=gemini-3.6-flash
 ```
 
 其中：
@@ -857,6 +827,8 @@ Application → LangSmith
 
 這正好對應前面那兩條不同資料流。
 
+`LANGSMITH_PROJECT` 填的是**專案名稱**，不是後台那個專案的識別碼。填錯不會報錯，只會默默開一個新專案收 Trace，讓你在原本以為的專案底下找不到任何 Run，誤判成 Tracing 沒生效。
+
 ---
 
 ## Step 3：建立 Application Settings
@@ -875,7 +847,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     gemini_api_key: str
-    model_name: str = "gemini-2.5-flash"
+    model_name: str = "gemini-3.6-flash"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -934,7 +906,7 @@ Response：
 ```json
 {
   "answer": "An SLO is ...",
-  "model": "gemini-2.5-flash"
+  "model": "gemini-3.6-flash"
 }
 ```
 
@@ -1085,7 +1057,7 @@ async def ask_llm(
     )
 
     return {
-        "answer": interaction.outputs[-1].text or "",
+        "answer": interaction.output_text or "",
         "model": settings.model_name,
     }
 ```
@@ -1162,7 +1134,7 @@ async def ask_llm(
     )
 
     return {
-        "answer": interaction.outputs[-1].text or "",
+        "answer": interaction.output_text or "",
         "model": settings.model_name,
     }
 ```
@@ -1298,7 +1270,7 @@ curl \
 ```json
 {
   "answer": "An SLO is a target level of reliability for a service.",
-  "model": "gemini-2.5-flash"
+  "model": "gemini-3.6-flash"
 }
 ```
 
@@ -1377,7 +1349,7 @@ ask_workflow                  1.82s
 把：
 
 ```env
-MODEL_NAME=gemini-2.5-flash
+MODEL_NAME=gemini-3.6-flash
 ```
 
 改成：
@@ -1685,6 +1657,8 @@ Evaluation 才開始回答：
 
 > 結果夠不夠好？
 
+2023 年紐約一起訴訟案更極端：律師用 ChatGPT 查案例，AI 順利產生了看起來格式完全正確的判例引用，整個流程「技術上」毫無異常。問題是，其中六個判例根本不存在。法官形容這些是「bogus judicial decisions with bogus quotes」。（[BBC：ChatGPT — US lawyer admits using AI for case research](https://www.bbc.com/news/world-us-canada-65735769)）如果當時律師團隊只看 Trace 有沒有 Error，看到的會是一片綠燈；能抓出問題的，只有真正去驗證內容的 Evaluation 環節。
+
 ---
 
 # ⑯ 那傳統 Metrics 還重要嗎？
@@ -1950,6 +1924,14 @@ Export Telemetry
 ```
 
 Tracing 的概念不會因為工具改變。
+
+---
+
+# 參考資料
+
+- [Google：Dapper, a Large-Scale Distributed Systems Tracing Infrastructure](https://research.google/pubs/dapper-a-large-scale-distributed-systems-tracing-infrastructure/)
+- [CBC News：Air Canada found liable for chatbot's bad advice on plane tickets](https://www.cbc.ca/news/canada/british-columbia/air-canada-chatbot-lawsuit-1.7116416)
+- [BBC：ChatGPT — US lawyer admits using AI for case research](https://www.bbc.com/news/world-us-canada-65735769)
 
 ---
 

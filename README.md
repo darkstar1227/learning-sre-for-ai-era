@@ -25,6 +25,9 @@
 | [Day2](./Day2/Day2.md) | 建立自己的 SRE Lab：從 FastAPI 到 Observability Stack |
 | [Day3](./Day3/Day3.md) | 故障注入實驗：Break / Observe / Explain |
 | [Day4](./Day4/Day4.md) | 什麼是 SRE？可靠性不是零故障 |
+| [Day5](./Day5/Day5.md) | DevOps、SRE 與 Platform Engineering：別再把三種工作混成一個職缺 |
+| [Day6](./Day6/Day6.md) | Reliability 到底是什麼？把「很穩」拆成五個能討論的問題 |
+| [Day7](./Day7/Day7.md) | Technical Success ≠ Semantic Success：AI 系統如何「正常地失敗」？ |
 
 每篇文章固定回答：
 

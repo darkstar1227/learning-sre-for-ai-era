@@ -1,0 +1,32 @@
+[project]
+name = "day3-failure-injection"
+version = "0.1.0"
+description = "Day3 DIY - Failure Injection: Slow/Timeout/500/DB down/Container crash/OOM"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.52.4",
+    "pydantic-settings>=2.15.0",
+    "prometheus-client>=0.21.0",
+    "python-json-logger>=2.0.7",
+    "opentelemetry-api>=1.27.0",
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.27.0",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    "psycopg[binary]>=3.2.0",
+]
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
