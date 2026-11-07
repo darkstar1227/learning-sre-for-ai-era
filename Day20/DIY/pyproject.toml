@@ -1,0 +1,19 @@
+[project]
+name = "day20-error-budget"
+version = "0.1.0"
+description = "Error Budget Policy & Burn Rate Calculation DIY"
+requires-python = ">=3.14"
+dependencies = [
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+]
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

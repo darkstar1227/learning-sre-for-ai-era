@@ -1,0 +1,22 @@
+[project]
+name = "day12-failure-modes"
+version = "0.1.0"
+description = "AI workflow failure-mode matrix and fixtures for Day 12"
+readme = "README.md"
+authors = [
+    { name = "Justin Lee", email = "justin.lee@cancerfree.io" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "pydantic>=2.5.0",
+]
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

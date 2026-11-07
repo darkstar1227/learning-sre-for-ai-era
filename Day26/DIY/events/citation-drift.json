@@ -1,0 +1,6 @@
+{
+  "event_type": "citation_drift",
+  "quality_ratio": 0.94,
+  "baseline_quality_ratio": 0.98,
+  "sample_size": 186
+}

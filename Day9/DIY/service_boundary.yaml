@@ -1,0 +1,61 @@
+# Day9.md ⑨ Step 1-4 的填寫結果，對象是 Day7/Day8 的 Grounded Q&A `/ask` 服務。
+# 這份檔案本身不是程式，是「使用者結果 → critical path → 依賴 → 候選 SLI」的規格化紀錄，
+# 交給 scripts/validate_boundary.py 對照 Day9.md ⑩ 的驗收清單做結構檢查。
+
+service_contract: >
+  已登入的員工可以查到有來源、符合權限的差旅政策答案。
+
+critical_path:
+  - Client
+  - Gateway
+  - Retriever
+  - LLM Provider
+  - Validator
+  - Response
+
+dependencies:
+  - name: Retriever（內部政策文件檢索）
+    owner: platform-team
+    required: true
+    expected_failure_behavior: >
+      找不到相關文件時，明確回覆「目前文件沒有這項資訊」；不得用其他文件片段拼湊答案。
+    observable_signal: retrieval_latency_ms, retrieval_empty_result_rate
+
+  - name: LLM Provider（Gemini API）
+    owner: external-vendor
+    required: true
+    expected_failure_behavior: >
+      429 或 5xx 時回傳明確的「暫時無法產生回答」，交由呼叫端決定是否重試；不得無限重試阻塞請求。
+    observable_signal: llm_request_errors_total, llm_request_latency_ms
+
+  - name: Validator（citation / contract 檢查）
+    owner: app-team
+    required: true
+    expected_failure_behavior: >
+      引用的文件不在 Retriever 實際取回的清單內時，擋下回答並標記 needs_review，不直接回給使用者。
+    observable_signal: ai_response_evaluations_total{quality_status=ungrounded}
+
+  - name: Control Plane（Monitoring / Deployment）
+    owner: platform-team
+    required: true
+    expected_failure_behavior: >
+      監控或部署系統本身故障時，視為整體 Service 可靠性的降級事件，需要獨立告警，
+      不能因為資料面暫時還在回應就判定「服務正常」。
+    observable_signal: monitoring_pipeline_up, deployment_pipeline_up
+
+candidate_slis:
+  - name: gateway_5xx_rate
+    status: PROVEN
+    reason: 直接對應使用者能否拿到回應，是 critical path 起點的可靠性訊號。
+
+  - name: retrieval_latency_p95
+    status: UNKNOWN
+    reason: >
+      低延遲不代表檢索到的內容足以支持正確回答；要先有 golden dataset 或抽樣 review
+      證實「延遲低的請求答案品質也沒問題」，才能升級成真正的 SLI。
+
+  - name: tool_execution_success_rate
+    status: UNKNOWN
+    reason: >
+      工具呼叫回傳成功，不代表使用者的任務已經被安全且正確地完成，仍需人工或
+      golden dataset 佐證。

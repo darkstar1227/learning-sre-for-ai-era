@@ -1,0 +1,5 @@
+{
+  "event_type": "provider_timeout",
+  "error_budget_fast_burn": true,
+  "task_failure_rate": 0.28
+}

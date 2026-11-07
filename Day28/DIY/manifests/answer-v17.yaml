@@ -1,0 +1,35 @@
+# Change Manifest for answer-v17
+# Corresponds to Day28.md section ③
+# This manifest tracks all non-code artifacts in this deployment
+
+change_id: answer-v17
+code_revision: abc123def456
+prompt_version: 2026-09-21-a
+model: google/gemini-3.6-flash
+golden_dataset: v3
+retrieval_index_version: retrieval-idx-v12
+tool_schema_version: tools-schema-v2.1
+evaluator_version: evaluator-rules-v4
+
+# Release gate: what must pass before promotion
+release_gate: citation_valid_and_safety_checks
+
+# Rollback: reference to previous stable version
+rollback: answer-v16
+
+# Owner: who is responsible for this change
+owner: platform-team
+
+# Observation metrics to watch after deployment (Day28.md section ①)
+observation_metrics:
+  - citation_accuracy
+  - safety_blocks_total
+  - response_latency_p95
+  - cost_per_request
+
+# Compatibility notes for rollback (Day28.md section ②)
+compatibility_notes: |
+  New tool schema (tools-schema-v2.1) introduced optional 'timeout' field.
+  Rolling back to answer-v16 requires handler compatibility - the field is optional
+  so old handlers will still parse correctly. Cost delta: ~+8% due to model upgrade.
+  Expected benefit: 12% improvement in citation accuracy per golden_dataset.

@@ -1,0 +1,5 @@
+{
+  "event_type": "tool_execution",
+  "unsafe_tool_attempt": true,
+  "tool_execution_succeeded": true
+}

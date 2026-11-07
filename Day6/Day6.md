@@ -132,7 +132,7 @@ Task success：使用者是否真的完成目標（Day 7）
 
 例如 RAG 回答有引用，不代表引用支持了答案；JSON schema 驗證通過，也不代表欄位裡的金額正確。把這些判斷混成一個 `success=true`，會讓後面的指標看起來很漂亮，排查時很痛苦。
 
-2012 年 Knight Capital 的股市交易事故，是 Correctness 失敗的極端案例。一名工程師部署新程式時漏掉一台伺服器，讓那台伺服器上一段早已停用、本應被覆蓋的舊交易邏輯重新被觸發。系統技術上完全正常運作：request 進來、訂單送出、回應都合法，沒有任何 5xx。但送出的訂單本身是錯的，45 分鐘內對 148 檔股票下了大量非預期交易，最終虧損約 4.4 億美元。[Knight Capital 交易事故](https://en.wikipedia.org/wiki/Knight_Capital_Group#2012_stock_trading_disruption) Availability 全程正常，Correctness 徹底失守——這正是為什麼 `success=true` 不能只看 API 有沒有回應。
+2012 年 Knight Capital 的股市交易事故，是 Correctness 失敗的極端案例。該公司部署新程式時，讓 router 中原本不該使用的缺陷函式被觸發；router 無法辨識訂單是否已成交。系統技術上仍在運作：request 進來、訂單送出、回應流程沒有因 5xx 停下來。但送出的訂單本身錯了。美國 SEC 的調查指出，45 分鐘內 router 為 212 筆客戶訂單送出逾 400 萬筆 order，最後損失逾 4.6 億美元。[SEC：Knight Capital 的 market access rule 執法案](https://www.sec.gov/newsroom/press-releases/2013-222) Availability 沒有替 Correctness 背書，這正是為什麼 `success=true` 不能只看 API 有沒有回應。
 
 ## ⑤ Durability：寫進去的資料，還在不在？
 
@@ -268,7 +268,361 @@ docs/
 
 這份文件的驗收標準不是數字填得多漂亮，而是每一個「已做到」都能回指到 evidence：trace、log、測試紀錄、還原演練，或已知限制。還沒有證據，就填 `UNKNOWN` 或 `hypothesis`。
 
-## ⑧ 今天記住的事：可靠性先有邊界，才有數字
+## ⑧ 同一筆 request，五個維度會給出五種答案
+
+把一筆 request 放進五個格子，是避免「服務到底算不算壞掉」變成會議辯論最快的方法。
+
+假設 `/api/ask` 收到一個查詢公司規範的問題。retriever 找到文件，模型在 1.2 秒回覆，API 回 `200`。隔天文件擁有者發現，那份文件已過期；回答引用了文件，也因此很自信地給了錯誤結論。
+
+```text
+request 進來                     → 有
+HTTP response 回去                → 有，200
+使用者等候時間                    → 1.2 秒
+回答是否與當前規範一致            → 否
+這筆回答是否必須保留以供追查      → 視產品需求而定
+若發現錯誤，能否修正與重跑        → 尚未證明
+```
+
+別急著替它貼一個「成功」或「失敗」標籤。先逐項回答。
+
+| 維度 | 這個案例的判斷 | 需要的證據 | 立刻該做什麼？ |
+| --- | --- | --- | --- |
+| Availability | 多半成功 | client 收到回覆、服務端成功記錄 | 不要因為 200 就停止調查 |
+| Latency | 可能成功 | client 端或 edge 到完整回應的耗時 | 和互動式服務的等待預期比較 |
+| Correctness | 失敗 | current policy、引用內容、回答內容 | 停止或修正受影響的回答路徑 |
+| Durability | 尚未知 | request／response 是否被持久保存 | 確認是否能回溯受影響範圍 |
+| Recoverability | 尚未知 | 更正資料、重新索引、重跑的紀錄 | 寫下修復與驗證步驟 |
+
+這不是文字遊戲。若把 `200` 當成唯一成功條件，這次事件會被 dashboard 藏起來；若把所有維度都叫 outage，又會讓值班者不知道要先修哪一段。拆開之後，行動才會變得具體：服務端可能無須擴容，真正要處理的是文件版本、retrieval index 與受影響回答。
+
+### 一個更不舒服、但更常見的案例
+
+考慮另一種事件：資料庫切換期間，API 有 90 秒回 `503`。切換完成後服務恢復，資料也沒有遺失。
+
+```text
+Availability    → 失敗：這 90 秒內使用者不能完成任務
+Latency         → 部分失敗：有些 client 等到 timeout
+Correctness     → 未必失敗：資料沒有被寫錯
+Durability      → 未必失敗：已確認的資料仍存在
+Recoverability  → 不能只說成功：要看恢復時間與恢復後驗證
+```
+
+這種事件常被寫成「短暫服務異常，已恢復」。對 incident timeline 而言，它缺了最需要的資訊：多少使用者受影響？重試是否造成 backlog？切換前後的寫入有沒有重複或遺失？資料庫看似起來後，應用程式是否真的能完成一筆使用者任務？
+
+可靠性維度的用處，就在於逼我們把這些問題問完。
+
+### 不是每個維度都要用同一個時間窗
+
+Availability 的事件通常以 minutes 或 requests 計。Durability 的答案可能要幾天後才知道，因為資料遺失常在還原、稽核或使用者回報時才浮現。Recoverability 更像一次演練或事故的完整紀錄，不能只截取「pod 已 Ready」那一秒。
+
+```text
+request 時間窗       → availability、latency
+內容驗證時間窗       → correctness
+資料保留時間窗       → durability
+故障到復原時間窗     → recoverability
+```
+
+把五個維度壓進同一張一分鐘 dashboard，通常只會得到一張很擁擠的圖。較好的做法是保留共同的 `request_id`、`trace_id`、版本資訊與時間戳，讓不同時間窗的 evidence 可以在需要時被關聯。
+
+## ⑨ 指標不是可靠性本身，而是可被反駁的證據
+
+工程團隊很容易把「有 metric」誤會成「已經可控」。其實 metric 只是在替某個定義提供證據；定義錯了，圖畫得再漂亮也會把人帶錯方向。
+
+先看兩個都很常見的指標：
+
+```text
+http_requests_total{status="200"}
+http_request_duration_seconds
+```
+
+它們對 API 的供應狀態很有用，但回答不了：
+
+- 這個 `200` 是否真的被 client 收到？
+- 回應是否滿足產品定義的格式與內容規則？
+- 這次回答用了哪個 prompt、model、retrieval index？
+- 寫入事件是否在資料庫故障後仍然存在？
+- 事故後是否真的完成過 restore？
+
+因此今天不急著把五個維度全部做成 Prometheus alert。先做一件更基本的事：替每個維度寫出「能證明什麼」與「不能證明什麼」。
+
+| Evidence | 可以支持的判斷 | 不能單獨支持的判斷 |
+| --- | --- | --- |
+| HTTP status | server 是否回覆特定狀態 | 使用者是否收到、內容是否正確 |
+| server latency histogram | server 處理耗時的分布 | 網路、前端渲染與 client timeout |
+| application log | 特定路徑是否執行、例外在哪裡 | 全體使用者影響比例 |
+| trace | 一次 workflow 的步驟與依賴等待 | 答案是否符合真實世界 |
+| evaluator result | 某套規則下的內容判定 | evaluator 自己是否正確 |
+| backup job 成功訊息 | job 曾經跑完 | backup 一定可還原、還原資料正確 |
+| restore drill 紀錄 | 某次演練的可復原性 | 未來所有事故一定能用同樣時間恢復 |
+
+最後一列很容易被忽略。restore drill 是有力 evidence，不是永久保固。schema、資料量、權限、備份格式和依賴拓撲都會改變；演練也需要隨變更重做。
+
+### 避免 metric 名稱替你下結論
+
+下面這種寫法看似方便，實際上很危險：
+
+```text
+ai_answer_success_total
+```
+
+它把 technical completion、parser validation、groundedness、人工覆核與使用者任務完成混在一個名稱裡。半年後有人看到 success rate 99.9%，很可能以為答案品質也有 99.9%。
+
+先把狀態拆開，名稱反而會誠實一些：
+
+```text
+ai_request_total{technical_status="success"}
+ai_response_validation_total{result="pass"}
+ai_evaluation_total{criterion="source_support",result="pass"}
+ai_task_outcome_total{result="unknown"}
+```
+
+上面的名稱只是 schema 範例，不是要求你立刻產生所有 metric。尤其 `task_outcome` 很可能無法在 request 結束時知道。若沒有可信回饋來源，記成 `unknown` 比假裝 `success` 更接近工程事實。
+
+### label 也有責任邊界
+
+不要把 `request_id`、完整 prompt、使用者 email 或文件全文塞進 Prometheus label。這會造成高 cardinality，也可能把敏感內容送進不該承載它的系統。
+
+比較安全的分工是：
+
+```text
+Metrics
+  → 用低 cardinality 的狀態、路由、model route、版本或結果類別看趨勢
+
+Logs / Traces
+  → 用 request_id、trace_id、受遮罩後的細節追單筆事件
+
+Evaluation dataset
+  → 保存經權限與保留政策處理後、可重跑的案例與標註
+```
+
+這不是限制觀測，而是讓每一種儲存系統做它擅長的事。把所有細節都灌進 metric，通常既查不快，也留不久。
+
+## ⑩ 實作：替 Lab 建立「可靠性證據地圖」
+
+今天的實作不是再加一個 dashboard，而是讓 Day 2 到 Day 3 已有的 Metrics、Logs、Traces 和資料保護假設，開始回答同一個使用者任務。
+
+以下步驟由讀者在自己的 `sre-for-ai-era` 專案執行。本文沒有建立、啟動或驗證 Day 6 的 DIY；命令與預期結果是給你自行對照的工作清單。
+
+### 1. 建立資料夾與紀錄檔
+
+在專案根目錄建立下列文件。若你已有同類文件，沿用既有位置即可，不必為了文章搬動架構。
+
+```text
+docs/
+├── reliability-definition.md
+├── reliability-evidence.md
+└── recovery-drill.md
+```
+
+`reliability-definition.md` 使用上一節的模板。接著建立 `reliability-evidence.md`，先把每個聲明與 evidence 對上：
+
+```markdown
+# Reliability Evidence Map
+
+## User Task
+
+使用者送出問題後，在可接受時間內取得可用回答。
+
+| Claim | Signal | Location | Status | Limitation |
+| --- | --- | --- | --- | --- |
+| API 能接受 request | HTTP request counter | Prometheus | observed | 只代表 server 看到 request |
+| 回應沒有 server exception | structured application log | Loki | observed | 不代表答案正確 |
+| workflow 有 retriever 與 model span | trace | tracing backend | observed | 不代表來源支持答案 |
+| request 記錄可保留 | database record | PostgreSQL | hypothesis | 尚未做 restore |
+| 資料可復原 | restore drill record | recovery-drill.md | UNKNOWN | 尚未演練 |
+```
+
+這張表的價值在於「Status」欄。`observed`、`hypothesis`、`UNKNOWN` 可以讓讀文件的人立刻知道哪些是看過的現象，哪些只是設計意圖。它也能避免 incident 時有人把 README 的願望當成已驗證能力。
+
+### 2. 為單筆 workflow 保留可關聯的欄位
+
+不管你用哪個 tracing SDK 或 logger，先在 application boundary 產生或接收 correlation ID。以下用 Python 示意資料模型，實際框架可調整：
+
+```python
+from dataclasses import dataclass
+from uuid import uuid4
+
+
+@dataclass(frozen=True)
+class RequestContext:
+    request_id: str
+    workflow_name: str
+    workflow_version: str
+    prompt_version: str
+    model_route: str
+    retrieval_index_version: str
+
+
+def new_request_context() -> RequestContext:
+    return RequestContext(
+        request_id=str(uuid4()),
+        workflow_name="policy_qa",
+        workflow_version="v1",
+        prompt_version="grounded-qa-v1",
+        model_route="primary",
+        retrieval_index_version="policy-2026-09",
+    )
+```
+
+這段 code 的重點不在 `dataclass`。它提醒我們，一次回答的可靠性判斷需要版本脈絡。發現錯答時，若只留下「模型很慢」或「API 回 200」，你無法判斷是 prompt 改動、index 更新、model route 切換，還是依賴服務讓 workflow 走了 fallback。
+
+接著在 log 裡記錄狀態，不要只寫自然語言句子：
+
+```python
+event = {
+    "event": "ask.completed",
+    "request_id": context.request_id,
+    "technical_status": "success",
+    "workflow_status": "completed",
+    "response_validation": "pass",
+    "quality_status": "unknown",
+    "task_status": "unknown",
+    "prompt_version": context.prompt_version,
+    "model_route": context.model_route,
+    "retrieval_index_version": context.retrieval_index_version,
+}
+logger.info("ask completed", extra=event)
+```
+
+`quality_status` 與 `task_status` 保留 `unknown` 並不丟臉。它清楚告訴後續的 evaluator 或人工審閱：這次流程完成了，但內容還沒有被證明。
+
+### 3. 讓 trace 與 log 指向同一筆工作
+
+如果 tracing backend 已經提供 trace ID，把它一起放入結構化 log；若前端也會回傳 request ID，回應 header 或 body 可以保留它，讓使用者回報問題時有可查的索引。
+
+```text
+Client response
+  └── request_id=req-123
+
+Application log
+  ├── request_id=req-123
+  └── trace_id=4bf92f...
+
+Trace
+  ├── trace_id=4bf92f...
+  └── spans=retrieve, model, validate
+```
+
+這個關聯能支援很實際的問法：
+
+- 「這次使用者說答案錯，是哪份文件被取回？」
+- 「這個 timeout 是卡在 retriever、model，還是 output parser？」
+- 「某版 prompt 上線後，quality evaluator 的失敗是否增加？」
+
+答案不在單一工具裡。Metrics 先告訴你趨勢，log 與 trace 才能帶你回到單筆事件。
+
+### 4. 為一條失敗路徑寫出預期觀測
+
+挑 Day 3 已做過或計畫做的 failure，例如「LLM provider timeout」。不要直接把故障當成一次炫技演示；先寫下應該在哪裡看見它。
+
+```markdown
+## Scenario: provider timeout
+
+### Expected user outcome
+
+- 使用者收到明確且可重試的失敗訊息，或按產品設計走 fallback。
+
+### Expected technical evidence
+
+- Metrics：timeout 或 dependency failure 計數增加。
+- Logs：有 request_id、provider、timeout class，敏感 input 已遮罩。
+- Trace：model span 標記 error 或 timeout，能看到等待時間。
+- Response：technical_status 不得標為 success。
+
+### What this does not prove
+
+- fallback 回答一定正確。
+- 使用者一定會重新嘗試。
+- 依賴供應商的根因已被確認。
+```
+
+這份「預期觀測」比事後截圖有用。截圖只能證明你某次看到一張圖；預期觀測把可被反駁的假設寫在故障發生前，之後才能知道是哪一段沒有照設計運作。
+
+### 5. 把 recovery 看成一條需要驗證的 workflow
+
+即使你還不做正式還原，也可以先把 `recovery-drill.md` 寫成待執行程序。不要填入沒有跑過的完成時間。
+
+```markdown
+# Recovery Drill Plan
+
+## Scope
+
+- 資料：依你的資料庫與備份策略填寫
+- 排除：cache、可重建 index、或其他不在本次範圍的資料
+
+## Preconditions
+
+- 備份位置、存取權限與版本已確認。
+- 還原目標不是 production。
+- 有驗證用的已知資料與帳號。
+
+## Procedure
+
+1. 記錄演練開始時間。
+2. 依實際資料庫的官方還原程序，還原到隔離環境。
+3. 驗證 schema、筆數範圍與已知資料。
+4. 啟動只連向還原資料的應用程式副本。
+5. 執行一筆正常使用者任務並保留 evidence。
+6. 記錄完成時間、資料差異與無法完成的步驟。
+
+## Result
+
+- Status: NOT RUN
+- Measured recovery time: UNKNOWN
+- Measured data loss window: UNKNOWN
+- Follow-up:
+```
+
+「依官方還原程序」不是偷懶。資料庫、版本與備份工具不同，硬抄另一個專案的 command 很容易在真正要救資料時造成二次事故。今天先定義驗證標準；選定技術後，再以該版本官方文件補上可執行命令。
+
+## ⑪ 反例：五種常見的可靠性誤判
+
+### 反例一：健康檢查綠燈，所以服務沒事
+
+健康檢查通常只回答 process 是否活著、port 能否連線，或少量 dependency 是否可達。它不代表主要使用者路徑能完成。若 `/healthz` 只回字串，retriever 取到舊 index、權限服務拒絕使用者、LLM provider rate limit，都可能完全不影響它。
+
+合理用法是把 health check 當成 routing 或快速偵測訊號，不能把它升格成 end-to-end SLI。
+
+### 反例二：P50 很快，所以 latency 沒問題
+
+P50 只描述中間那一位使用者。聊天式產品通常更在意 tail latency 與 first token，因為人會在空白畫面前等待。若 P50 300 ms、P99 30 s，值班者至少要知道後面那 1% 發生在哪個依賴與哪種 workflow，而不是用平均值安慰自己。
+
+### 反例三：有引用，所以回答一定可信
+
+引用可能過期、切錯段落、被錯誤解讀，或只和回答中的一小部分有關。Citation presence 是可觀測欄位，不是 truth proof。要把「有引用」升格成品質判斷，仍要檢查 source support、版本、範圍與資料新鮮度。
+
+### 反例四：備份 job 成功，所以 RPO 與 RTO 已達成
+
+備份 job 可能只備到部分資料、備到無法存取的位置，或依版本不相容而無法還原。即使能還原，所需時間與資料缺口也可能不符合產品需要。RPO、RTO 是和需求對齊的目標；backup job success 只是其中一條證據。
+
+### 反例五：事故結束了，所以不用補資料
+
+服務恢復後，真正困難的部分常剛開始：queue 裡的工作是否重複執行？使用者在錯誤期間的寫入是否需要補償？錯答是否已被使用者採用？cache 是否仍保有舊資料？若這些問題沒被驗證，incident 只能說「部分恢復」。
+
+## ⑫ Reader Checklist：今天完成後應該留下什麼
+
+請依自己的 Lab 實作，不要為了打勾填入未觀察過的結論。
+
+```text
+[ ] 我已選定一個使用者任務，並寫明 request 起點與終點。
+[ ] 我已把 Availability、Latency、Correctness、Durability、Recoverability 分開定義。
+[ ] 我已列出每一個維度目前有哪些 evidence，以及 evidence 的限制。
+[ ] 我沒有把 HTTP 200 直接稱為任務成功或語意正確。
+[ ] 我已保留 request_id 與 trace_id 的關聯方式。
+[ ] 我已記錄 prompt、workflow、model route、retrieval index 等版本脈絡。
+[ ] 我沒有把 prompt、完整使用者輸入或 request_id 放入 Prometheus label。
+[ ] 我已為一種 failure 寫下預期的 Metrics、Logs、Traces 與使用者結果。
+[ ] 我已把 restore 視為待演練項目；未演練處明確標為 UNKNOWN 或 NOT RUN。
+[ ] 我知道下一步需要處理 semantic success，而不是替品質先填一個百分比。
+```
+
+### 本日驗收的界線
+
+完成文件與程式碼範例，不等於服務已達到任何 production SLO。你至少可以確認的是：每個可靠性聲明是否有對應 evidence、每個未知是否沒有被包裝成事實，以及事故發生時你是否知道該到哪裡找證據。
+
+若還沒有 Metrics、Logs 或 Traces，不要硬做一個空白 dashboard。先把 evidence map 的欄位留成 `NOT INSTRUMENTED`，再回到 Day 2 的 observability stack 補齊。可靠性工作不怕未知；怕的是未知被命名成綠燈。
+
+## ⑬ 今天記住的事：可靠性先有邊界，才有數字
 
 把 Reliability 壓成 uptime，會漏掉慢、錯、資料消失，以及回不來。
 
@@ -284,7 +638,7 @@ Recoverability  → 壞掉後能回到可用狀態嗎？
 
 下一篇會把最容易被偷換的一件事拆開：API 成功、資料正確，是否等於使用者任務成功？
 
-## ⑨ 參考資料
+## ⑭ 參考資料
 
 - [Google SRE Book：Service Level Objectives](https://sre.google/sre-book/service-level-objectives/)
 - [Google SRE Book：Production Services Best Practices](https://sre.google/sre-book/service-best-practices/)
@@ -292,7 +646,7 @@ Recoverability  → 壞掉後能回到可用狀態嗎？
 - [AWS：2017 us-east-1 S3 事故報告](https://aws.amazon.com/message/41926//)
 - [GitHub：2018-10-21 Incident Report](https://github.blog/news-insights/company-news/october21-incident-report/)
 - [GitLab：Postmortem of database outage of January 31 (2017)](https://about.gitlab.com/blog/postmortem-of-database-outage-of-january-31/)
-- [Knight Capital Group — 2012 stock trading disruption](https://en.wikipedia.org/wiki/Knight_Capital_Group#2012_stock_trading_disruption)
+- [SEC：Knight Capital market access rule 執法案](https://www.sec.gov/newsroom/press-releases/2013-222)
 
 ## 下一篇：Day 07｜Technical Success ≠ Semantic Success
 

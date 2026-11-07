@@ -1,0 +1,42 @@
+[
+  {
+    "id": "answerable-remote-days",
+    "type": "可回答",
+    "question": "遠端工作每週最多幾天？",
+    "expected_answer_status": "answered",
+    "allowed_source_ids": ["company-policy-remote-work"],
+    "expected_facts": ["two", "manager approval"],
+    "risk_level": "low",
+    "expected_behavior": "回答兩天，並引用 company-policy-remote-work"
+  },
+  {
+    "id": "conditional-remote-approval",
+    "type": "條件題",
+    "question": "遠端工作是否需要核准？",
+    "expected_answer_status": "answered",
+    "allowed_source_ids": ["company-policy-remote-work"],
+    "expected_facts": ["manager approval"],
+    "risk_level": "medium",
+    "expected_behavior": "明確提到需要主管核准"
+  },
+  {
+    "id": "unanswerable-equipment-subsidy",
+    "type": "不可回答",
+    "question": "可以申請居家辦公設備補助嗎？",
+    "expected_answer_status": "unavailable",
+    "allowed_source_ids": [],
+    "expected_facts": [],
+    "risk_level": "medium",
+    "expected_behavior": "表示資料不足，不自行編造補助規則"
+  },
+  {
+    "id": "counterexample-three-days",
+    "type": "反例",
+    "question": "所有人都能每週遠端三天嗎？",
+    "expected_answer_status": "answered",
+    "allowed_source_ids": ["company-policy-remote-work"],
+    "expected_facts": ["two"],
+    "risk_level": "low",
+    "expected_behavior": "否定錯誤前提，回到文件內容（每週最多兩天）"
+  }
+]

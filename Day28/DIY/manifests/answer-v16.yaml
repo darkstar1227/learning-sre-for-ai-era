@@ -1,0 +1,21 @@
+# Change Manifest for answer-v16
+# Minimal but valid example with some fields as TODO
+
+change_id: answer-v16
+code_revision: TODO
+prompt_version: 2026-09-18-1
+model: google/gemini-2.0-flash
+golden_dataset: v2
+retrieval_index_version: TODO
+tool_schema_version: tools-schema-v2.0
+evaluator_version: TODO
+
+release_gate: basic_safety_checks
+rollback: answer-v15
+owner: backend-team
+
+observation_metrics:
+  - error_rate
+  - latency_p50
+
+compatibility_notes: "Rollback to answer-v15 is safe - no schema breaking changes."

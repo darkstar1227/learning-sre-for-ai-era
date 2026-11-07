@@ -1,0 +1,17 @@
+[project]
+name = "day20-error-budget"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Justin Lee", email = "justin.lee@cancerfree.io" }
+]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+day20-error-budget = "day20_error_budget:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"

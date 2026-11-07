@@ -1,0 +1,40 @@
+# Canary Metadata Example
+# Based on Day28.md section ⑩ (Canary: Metadata)
+
+# Example of metadata that should be attached to every request during canary
+request_1:
+  request_id: "req-2026092101-001"
+  trace_id: "trace-abc123def456"
+  change_id: "answer-v17"
+  release_stage: "canary"
+  prompt_version: "2026-09-21-a"
+  model_route: "google/gemini-3.6-flash"
+  retrieval_index_version: "retrieval-idx-v12"
+  evaluator_version: "citation-evaluator-v2"
+  deployment_id: "deploy-2026-09-21-001"
+  canary_percentage: 5
+  user_segment: "policy_qa_users"
+  timestamp: "2026-09-21T10:30:00Z"
+
+request_2:
+  request_id: "req-2026092101-002"
+  trace_id: "trace-def456ghi789"
+  change_id: "answer-v17"
+  release_stage: "canary"
+  prompt_version: "2026-09-21-a"
+  model_route: "google/gemini-3.6-flash"
+  retrieval_index_version: "retrieval-idx-v12"
+  evaluator_version: "citation-evaluator-v2"
+  deployment_id: "deploy-2026-09-21-001"
+  canary_percentage: 5
+  user_segment: "policy_qa_users"
+  timestamp: "2026-09-21T10:31:15Z"
+
+# Why this metadata matters for troubleshooting
+# When a user reports quality issue:
+# 1. Get request_id from error message
+# 2. Look up trace_id in observability platform
+# 3. From trace, read change_id, prompt_version, model_route
+# 4. Compare metrics for this version vs baseline
+# 5. If degradation, use change_id to find manifest & rollback info
+# 6. Decide: rollback, continue canary, or escalate

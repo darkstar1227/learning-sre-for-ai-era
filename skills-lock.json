@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "humanizer-zh-tw": {
+      "source": "kevintsai1202/Humanizer-zh-TW",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "cac733bcf659c47acd2004ea3c938944dc72a893f2e3d3f73f80f71beb0e08f6"
+    }
+  }
+}
